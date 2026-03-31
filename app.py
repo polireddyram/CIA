@@ -14,35 +14,19 @@ st.set_page_config(
 # ---------------- CUSTOM CSS ----------------
 st.markdown("""
 <style>
-body {
-    background-color: #f5f7fa;
-}
-.main {
-    background-color: #f5f7fa;
-}
-h1 {
-    text-align: center;
-    color: #2c3e50;
-}
-h3 {
-    color: #34495e;
-}
+body { background-color: #f5f7fa; }
+h1 { text-align: center; color: #2c3e50; }
 .stButton>button {
     background-color: #4CAF50;
     color: white;
     border-radius: 8px;
     height: 45px;
-    font-size: 16px;
 }
 .stDownloadButton>button {
     background-color: #2196F3;
     color: white;
     border-radius: 8px;
     height: 45px;
-    font-size: 16px;
-}
-section[data-testid="stSidebar"] {
-    background-color: #ffffff;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -51,19 +35,28 @@ section[data-testid="stSidebar"] {
 st.markdown("""
 <h1>📊 Internal Marks Processing System</h1>
 <p style='text-align:center; font-size:18px; color:gray;'>
-Upload PDF → Preview → Download Excel (All values are integers)
+Upload PDF → Preview → Download Excel
 </p>
 <hr>
 """, unsafe_allow_html=True)
+
+# ---------------- USER INPUT ----------------
+st.markdown("### 🏫 Institution Details")
+colA, colB = st.columns(2)
+
+with colA:
+    college_name = st.text_input("College Name", "Your College Name")
+
+with colB:
+    department_name = st.text_input("Department Name", "Department of Computer Science")
 
 # ---------------- SIDEBAR ----------------
 st.sidebar.header("⚙️ Settings")
 random_range = st.sidebar.slider("Random Variation (±)", 0, 10, 5)
 
 # ---------------- FILE UPLOAD ----------------
-with st.container():
-    st.subheader("📁 Upload File")
-    uploaded_file = st.file_uploader("Choose Internal Marks PDF", type=["pdf"])
+st.subheader("📁 Upload File")
+uploaded_file = st.file_uploader("Choose Internal Marks PDF", type=["pdf"])
 
 # ---------------- VALID PREFIX ----------------
 valid_regd_prefixes = [
@@ -113,7 +106,6 @@ if uploaded_file:
                             try:
                                 total_marks = int(float(total_marks_str))
 
-                                # -------- TOTAL CALCULATION --------
                                 total_1_plus_2 = int(round(total_marks / 0.40))
                                 scaled_to_40 = int(round(total_1_plus_2 * 0.40))
 
@@ -123,22 +115,20 @@ if uploaded_file:
                                 total_1 = int(min(half_total + random_offset, 50))
                                 total_2 = int(total_1_plus_2 - total_1)
 
-                                # -------- TOTAL 1 --------
+                                # Total 1
                                 ncc1 = 10
                                 a1 = int(round(total_1 * 0.20))
                                 m1 = int(round(total_1 * 0.40))
                                 sq1 = int(total_1 - a1 - m1 - ncc1)
-
                                 if sq1 < 0:
                                     m1 += sq1
                                     sq1 = 0
 
-                                # -------- TOTAL 2 --------
+                                # Total 2
                                 ncc2 = 10
                                 a2 = int(round(total_2 * 0.20))
                                 m2 = int(round(total_2 * 0.40))
                                 sq2 = int(total_2 - a2 - m2 - ncc2)
-
                                 if sq2 < 0:
                                     m2 += sq2
                                     sq2 = 0
@@ -163,25 +153,17 @@ if uploaded_file:
 
         df = pd.DataFrame(all_student_data, columns=columns)
 
-        # ---------------- ERROR CHECK ----------------
         if df.empty:
             st.error("❌ No valid student data found in PDF")
             st.stop()
 
-        # ---------------- SUCCESS ----------------
         st.success("✅ Processing Completed Successfully!")
 
         # ---------------- METRICS ----------------
         col1, col2, col3 = st.columns(3)
-
-        with col1:
-            st.metric("👨‍🎓 Students", len(df))
-
-        with col2:
-            st.metric("📘 Subject", subject_name)
-
-        with col3:
-            st.metric("📊 Max Marks", df["Scaled to 40"].max())
+        col1.metric("👨‍🎓 Students", len(df))
+        col2.metric("📘 Subject", subject_name)
+        col3.metric("📊 Max Marks", df["Scaled to 40"].max())
 
         st.markdown("---")
 
@@ -189,14 +171,25 @@ if uploaded_file:
         st.subheader("📋 Student Marks Preview")
         st.dataframe(df, use_container_width=True, height=450)
 
-        # ---------------- EXCEL DOWNLOAD ----------------
+        # ---------------- EXCEL OUTPUT ----------------
         output = io.BytesIO()
 
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            pd.Series([f"Subject: {subject_name}"]).to_excel(
-                writer, index=False, header=False
-            )
-            df.to_excel(writer, index=False, startrow=2)
+            df.to_excel(writer, index=False, startrow=3)
+
+            workbook  = writer.book
+            worksheet = writer.sheets['Sheet1']
+
+            header_format = workbook.add_format({
+                'bold': True,
+                'align': 'center',
+                'font_size': 14
+            })
+
+            # Merge and write headers
+            worksheet.merge_range('A1:O1', college_name, header_format)
+            worksheet.merge_range('A2:O2', department_name, header_format)
+            worksheet.merge_range('A3:O3', f"Subject: {subject_name}", header_format)
 
         safe_name = subject_name.replace(" ", "_")
 
@@ -210,8 +203,7 @@ if uploaded_file:
         )
 
     except Exception as e:
-        st.error(f"⚠️ Error processing file: {str(e)}")
+        st.error(f"⚠️ Error: {str(e)}")
 
 else:
     st.warning("📌 Please upload a PDF file to begin")
-
