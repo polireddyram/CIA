@@ -6,22 +6,64 @@ import random
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
-    page_title="Internal Marks Generator",
+    page_title="Internal Marks Processing System",
     layout="wide",
     page_icon="📊"
 )
 
+# ---------------- CUSTOM CSS ----------------
+st.markdown("""
+<style>
+body {
+    background-color: #f5f7fa;
+}
+.main {
+    background-color: #f5f7fa;
+}
+h1 {
+    text-align: center;
+    color: #2c3e50;
+}
+h3 {
+    color: #34495e;
+}
+.stButton>button {
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 8px;
+    height: 45px;
+    font-size: 16px;
+}
+.stDownloadButton>button {
+    background-color: #2196F3;
+    color: white;
+    border-radius: 8px;
+    height: 45px;
+    font-size: 16px;
+}
+section[data-testid="stSidebar"] {
+    background-color: #ffffff;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ---------------- HEADER ----------------
-st.title("📊 Internal Marks Generator")
-st.markdown("### Upload PDF → Preview → Download Excel (All values are integers)")
-st.markdown("---")
+st.markdown("""
+<h1>📊 Internal Marks Processing System</h1>
+<p style='text-align:center; font-size:18px; color:gray;'>
+Upload PDF → Preview → Download Excel (All values are integers)
+</p>
+<hr>
+""", unsafe_allow_html=True)
 
 # ---------------- SIDEBAR ----------------
 st.sidebar.header("⚙️ Settings")
 random_range = st.sidebar.slider("Random Variation (±)", 0, 10, 5)
 
 # ---------------- FILE UPLOAD ----------------
-uploaded_file = st.file_uploader("📁 Upload Internal Marks PDF", type=["pdf"])
+with st.container():
+    st.subheader("📁 Upload File")
+    uploaded_file = st.file_uploader("Choose Internal Marks PDF", type=["pdf"])
 
 # ---------------- VALID PREFIX ----------------
 valid_regd_prefixes = [
@@ -41,13 +83,12 @@ if uploaded_file:
     try:
         with pdfplumber.open(uploaded_file) as pdf:
 
-            # Extract subject name
             first_page_text = pdf.pages[0].extract_text()
+
             for line in first_page_text.split('\n'):
                 if "Subject : " in line:
                     subject_name = line.replace("Subject : ", "").strip()
 
-            # Process pages
             for page in pdf.pages:
                 table = page.extract_table()
 
@@ -132,15 +173,21 @@ if uploaded_file:
 
         # ---------------- METRICS ----------------
         col1, col2, col3 = st.columns(3)
-        col1.metric("👨‍🎓 Total Students", len(df))
-        col2.metric("📘 Subject", subject_name)
-        col3.metric("📊 Max Marks", df["Scaled to 40"].max())
+
+        with col1:
+            st.metric("👨‍🎓 Students", len(df))
+
+        with col2:
+            st.metric("📘 Subject", subject_name)
+
+        with col3:
+            st.metric("📊 Max Marks", df["Scaled to 40"].max())
 
         st.markdown("---")
 
         # ---------------- TABLE ----------------
-        st.subheader("📋 Preview")
-        st.dataframe(df, use_container_width=True)
+        st.subheader("📋 Student Marks Preview")
+        st.dataframe(df, use_container_width=True, height=450)
 
         # ---------------- EXCEL DOWNLOAD ----------------
         output = io.BytesIO()
@@ -153,8 +200,10 @@ if uploaded_file:
 
         safe_name = subject_name.replace(" ", "_")
 
+        st.markdown("### 📥 Download Result")
+
         st.download_button(
-            label="📥 Download Excel File",
+            label="Download Excel File",
             data=output.getvalue(),
             file_name=f"{safe_name}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -165,3 +214,4 @@ if uploaded_file:
 
 else:
     st.warning("📌 Please upload a PDF file to begin")
+
